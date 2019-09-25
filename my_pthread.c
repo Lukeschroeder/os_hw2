@@ -54,11 +54,23 @@ void my_pthread_join(my_pthread_t thread){
 
   // Implement Here //
   struct threadControlBlock* temp=&my_pthread_tcb;
-  while(temp!=NULL && temp->tid!=thread){
+  if(temp==NULL){
+    return;
+  }
+  if(temp->tid==thread){
+    while(temp->status==RUNNABLE){}
+    my_pthread_tcb=my_pthread_tcb->next;
+    free(temp);
+    return;
+  }
+  while(temp->next!=NULL && temp->tid!=thread){
     temp=temp->next;
   }
-  if(temp!=NULL){
-    while(temp->status!=RUNNABLE){}
+  if(temp->next!=NULL){
+    while(temp->next->status!=RUNNABLE){}
+    struct threadControlBlock* t=temp->next;
+    temp->next=temp->next->next;
+    free(t);
   }
 }
 
