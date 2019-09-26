@@ -2,6 +2,11 @@
 
 /* Scheduler State */
  // Fill in Here //
+typedef enum schedularState{
+  ON,//running
+  OFF//not running
+}state;
+state sched=OFF;
 
 
 /* Scheduler Function
@@ -10,7 +15,10 @@
 void schedule(int signum){
 
   // Implement Here
-
+  /*while(threadlist!=NULL){
+    //iterate through list
+  }
+  */
 }
 
 /* Create a new TCB for a new thread execution context and add it to the queue
@@ -20,22 +28,15 @@ void schedule(int signum){
 void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg){
 
   // Implement Here
-  struct threadControlBlock* temp=&my_pthread_tcb;
-  if(temp==NULL){
-    temp=malloc(sizeof(struct threadControlBlock));
-    temp->tid=thread;
-    temp->status=RUNNABLE;
-    temp->next=NULL;
-    my_pthread_tcb=*temp;
-  }
-  else{
-    while(temp->next!=NULL){
-      temp=temp->next;
-    }
-    temp->next=malloc(sizeof(struct threadControlBlock));
-    temp->next->tid=thread;
-    temp->next->status=RUNNABLE;
-    temp->next->next=NULL;
+  //
+  //init scheduler
+  if(sched=OFF){
+    sched=ON;
+    //insert settimer code with TIME_QUANTUM_MS for time interval
+    //set timer interrupt signal to schedule(int signum)
+      //this means in the schedule method just check the signum for whatever number is timer interrupt,
+      //if an error besides timer interrupt occurs then I will handle it and exit()
+    //initialize head of list
   }
 }
 
@@ -51,7 +52,7 @@ void my_pthread_yield(){
  * has finished executing.
  */
 void my_pthread_join(my_pthread_t thread){
-
+  //replace my_pthread_tcb with whatever the head of the linked list is
   // Implement Here //
   struct threadControlBlock* temp=&my_pthread_tcb;
   if(temp==NULL){
@@ -60,7 +61,6 @@ void my_pthread_join(my_pthread_t thread){
   if(temp->tid==thread){
     while(temp->status==RUNNABLE){}
     my_pthread_tcb=my_pthread_tcb->next;
-    free(temp);
     return;
   }
   while(temp->next!=NULL && temp->tid!=thread){
@@ -68,9 +68,7 @@ void my_pthread_join(my_pthread_t thread){
   }
   if(temp->next!=NULL){
     while(temp->next->status!=RUNNABLE){}
-    struct threadControlBlock* t=temp->next;
     temp->next=temp->next->next;
-    free(t);
   }
 }
 
@@ -81,7 +79,7 @@ my_pthread_t my_pthread_self(){
 
   // Implement Here //
 
-  return 0; // temporary return, replace this
+  return my_pthread_tcb.tid; // temporary return, replace this
 
 }
 
