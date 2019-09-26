@@ -15,8 +15,14 @@ state sched=OFF;
 void schedule(int signum){
 
   // Implement Here
-  /*while(threadlist!=NULL){
+  //struct threadControlBlock* temp=threadlist;
+  /*while(temp!=NULL){
     //iterate through list
+    if(temp->status=RUNNABLE){
+      //swapcontext over
+      while(temp->status=RUNNABLE);
+    }
+    temp=temp->next;
   }
   */
 }
@@ -45,7 +51,7 @@ void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg)
 void my_pthread_yield(){
 
   // Implement Here
-
+  //set status to pause and context swap
 }
 
 /* The calling thread will not continue until the thread with tid thread
