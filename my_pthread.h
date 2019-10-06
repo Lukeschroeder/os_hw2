@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <ucontext.h>
 
+#define STACKSIZE 32768
 #define TIME_QUANTUM_MS 500000 // Time quantum in microseconds
 
 /* Thread ID */
@@ -24,6 +25,11 @@ typedef struct threadControlBlock{
   struct threadControlBlock* next;
 } my_pthread_tcb;
 
+struct tCB{
+	struct threadControlBlock* slept;
+	struct threadControlBlock* slept_on;
+  struct tCB* next;
+};
 
 /* Function Declarations */
 void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg);
