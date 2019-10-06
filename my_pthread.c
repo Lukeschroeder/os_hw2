@@ -1,20 +1,26 @@
 #include "my_pthread.h"
+#define STACKSIZE 32768
 
 /* Scheduler State */
  // Fill in Here //
-struct threadControlBlock* r_tail=NULL;
-struct threadControlBlock* s_tail=NULL;
-struct threadControlBlock* execute=NULL;
+my_pthread_tcb* r_tail=NULL;
+my_pthread_tcb* s_tail=NULL;
+my_pthread_tcb* execute=NULL;
+
+my_pthread_t TID=0;
+
 
 /* Scheduler Function
  * Pick the next runnable thread and swap contexts to start executing
  */
- typdef enum scheduler_status{
+ typedef enum scheduler_status{
    OFF,
    ON
  }sched;
+
 sched s=OFF;
-void executeToList(struct threadControlBlock** queue){
+
+void executeToList(my_pthread_tcb** queue){
   if((*queue)!=NULL){
     execute->next=(*queue)->next;
     (*queue)->next=execute;
@@ -27,9 +33,10 @@ void executeToList(struct threadControlBlock** queue){
     execute=NULL;
   }
 }
+
 void schedule(int signum){
   if(signum==SIGALRM){
-    if(execute!=NULL)
+    if(execute!=NULL) {
       if(execute->status==RUNNABLE){
         executeToList(&r_tail);
       }
@@ -43,7 +50,7 @@ void schedule(int signum){
   }
   else{
     printf("%d\n",signum);
-    printf("Something has gone horribly wrong????\n");
+    printf("Error: Akshay Fucked Up Our Code\n");
   }
 }
 
@@ -52,19 +59,54 @@ void schedule(int signum){
  * create a TCB for the main thread as well as initalize any scheduler state.
  */
 void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg){
-
-  // Implement Here
-  //
-  //init scheduler
-  if(s=OFF){
+  //Initialize scheduler, create main thread
+  if(s==OFF){
+    //Starts scheduler
     s=ON;
-    //insert settimer code with TIME_QUANTUM_MS for time interval
-    //set timer interrupt signal to schedule(int signum)
-      //this means in the schedule method just check the signum for whatever number is timer interrupt,
-      //if an error besides timer interrupt occurs then I will handle it and exit()
+
+    //Initializes maintcb thread control block, stores main context
+    my_pthread_tcb * maintcb = (my_pthread_tcb *) malloc(sizeof(my_pthread_tcb));
+    *thread = TID;
+    maintcb->tid = TID++;
+    maintcb->status = RUNNABLE;
+    if(!getcontext(&maintcb->context)) {
+      printf("Get Main Context Successful\n");
+    } else {
+      printf("Get Main Context Failed\n");
+    }
+
+    ucontext_t * currentcontext = (ucontext_t *) malloc(sizeof(ucontext_t));
+    getcontext(currentcontext);
+    swapcontext(currentcontext, &maintcb->context);
+ 
+
+    //Confirms success
+    printf("Main Thread Created: TID = %d\n", maintcb->tid);
   }
-  //insert rest of create thread code
+  
+  //Initializes newtcb thread control block, stores function context
+  my_pthread_tcb * newtcb = (my_pthread_tcb *) malloc(sizeof(my_pthread_tcb));
+  newtcb->tid = TID++;
+  newtcb->status = RUNNABLE;
+  if(!getcontext(&newtcb->context)) {
+    printf("Get New Context Successful\n");
+  } else {
+    printf("Get New Context Failed\n");
+  }
+  newtcb->context.uc_link = 0; //May change, terminates process on context return. Need to switch to next context 
+  newtcb->context.uc_stack.ss_sp=malloc(STACKSIZE);
+  newtcb->context.uc_stack.ss_size=STACKSIZE;
+  newtcb->context.uc_stack.ss_flags=0;
+  makecontext(&newtcb->context,(void *)function, 0);
+  printf("New Thread Created: TID = %d\n", newtcb->tid);
+  
 }
+
+
+
+
+
+
 
 /* Give up the CPU and allow the next thread to run.
  */
@@ -77,12 +119,12 @@ void my_pthread_yield(){
 
 /* The calling thread will not continue until the thread with tid thread
  * has finished executing.
+ * needs to be changed, he said it was a one line check after identifying node and calling schedular??
  */
- //needs to be changed, he said it was a one line check after identifying node and calling schedular??
 void my_pthread_join(my_pthread_t thread){
   //replace my_pthread_tcb with whatever the head of the linked list is
-  // Implement Here //
-  struct threadControlBlock* temp=&my_pthread_tcb;
+  /*
+  struct threadControlBlock* temp = &my_pthread_tcb;
   if(temp==NULL){
     return;
   }
@@ -98,6 +140,7 @@ void my_pthread_join(my_pthread_t thread){
     while(temp->next->status!=FINISHED){}
     temp->next=temp->next->next;
   }
+  */
 }
 
 
@@ -107,7 +150,7 @@ my_pthread_t my_pthread_self(){
 
   // Implement Here //
 
-  return my_pthread_tcb.tid; // temporary return, replace this
+  return 10;  // temporary return, replace this
 
 }
 

@@ -11,7 +11,7 @@ void thread_run(){
     my_pthread_yield();
   }
   printf("Thread %d Finished\n", my_pthread_self());
-  my_pthread_exit()
+  my_pthread_exit();
 }
 
 
