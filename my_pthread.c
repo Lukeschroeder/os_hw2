@@ -1,36 +1,50 @@
 #include "my_pthread.h"
-#define STACKSIZE 32768
 
 /* Scheduler State */
- // Fill in Here //
-my_pthread_tcb* r_tail=NULL;
-my_pthread_tcb* s_tail=NULL;
-my_pthread_tcb* execute=NULL;
-
 my_pthread_t TID=0;
+//circly linked list
+struct threadControlBlock* r_tail=NULL;
+//circly linked list to contain the threadControlBlock
+struct tCB* s_tail=NULL;
+//node for thread currently running
+struct threadControlBlock* execute=NULL;
+
 
 
 /* Scheduler Function
  * Pick the next runnable thread and swap contexts to start executing
  */
- typedef enum scheduler_status{
-   OFF,
-   ON
- }sched;
+typedef enum scheduler_status{
+  OFF,
+  ON
+}sched;
 
 sched s=OFF;
 
-void executeToList(my_pthread_tcb** queue){
-  if((*queue)!=NULL){
-    execute->next=(*queue)->next;
-    (*queue)->next=execute;
-    (*queue)=execute;
+void executeToReady(){
+  if(r_tail!=NULL){
+    execute->next=r_tail->next;
+    r_tail->next=execute;
+    r_tail=execute;
     execute=NULL;
   }
   else{
     execute->next=execute;
-    (*queue)=execute;
+    r_tail=execute;
     execute=NULL;
+  }
+}
+
+
+void readyToExecute(){
+  if(r_tail!=NULL){
+    execute=r_tail->next;
+    if(r_tail->next=r_tail){
+      r_tail=NULL;
+    }
+    else{
+      r_tail->next=r_tail->next->next;
+    }
   }
 }
 
@@ -38,15 +52,43 @@ void schedule(int signum){
   if(signum==SIGALRM){
     if(execute!=NULL) {
       if(execute->status==RUNNABLE){
-        executeToList(&r_tail);
-      }
-      else if(execute->status==SLEEP){
-        executeToList(&s_tail);
+        //swap context first
+        //swap execute and r_tail->next
+        executeToReady();
+        readyToExecute();
       }
       else{
-        free(execute);
+        if(execute->status==FINISHED){
+          //check sleep
+          if(s_tail!=NULL){
+            struct tCB* temp=s_tail->next;
+            struct tCB* before=s_tail;
+            while(temp!=s_tail && temp->slept_on!=execute){
+              before=temp;
+              temp=temp->next;
+            }
+            if(temp->slept_on==execute){
+              temp->slept->status=RUNNABLE;
+              if(before==temp){
+                if(s_tail==temp){
+
+                }
+                free(s_tail);
+
+              }
+              else{
+
+              }
+            }
+          }
+          //swap context first
+          //swap execute and r_tail->next
+          free(execute);
+          readyToExecute();
+        }
       }
     }
+
   }
   else{
     printf("%d\n",signum);
@@ -160,6 +202,7 @@ my_pthread_t my_pthread_self(){
 void my_pthread_exit(){
 
   // Implement Here //
+  schedule(SIGALRM);
   //just set status to finished and call schedule(SIGALRM)
   //the scheduler will take care of it.
 }
