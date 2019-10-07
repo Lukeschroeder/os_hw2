@@ -63,19 +63,15 @@ void schedule(int signum){
             if(temp->slept_on==execute){
               temp->slept->status=RUNNABLE;
               if(before==temp){
-                if(s_tail==temp){
-
-                }
                 free(s_tail);
-
               }
               else{
-
+                before->next=temp->next;
+                free(temp);
               }
             }
           }
-          //swap context first
-          //swap execute and r_tail->next
+          //swap context first with r_tail->next
           free(execute);
           readyToExecute();
         }
