@@ -39,7 +39,7 @@ void executeToReady(){
 void readyToExecute(){
   if(r_tail!=NULL){
     execute=r_tail->next;
-    if(r_tail->next=r_tail){
+    if(r_tail->next==r_tail){
       r_tail=NULL;
     }
     else{
@@ -49,13 +49,14 @@ void readyToExecute(){
 }
 
 void schedule(int signum){
-  if(signum==SIGALRM){
+  if(signum==SIGPROF){
     if(execute!=NULL) {
       if(execute->status==RUNNABLE){
         //swap context first
         //swap execute and r_tail->next
-        executeToReady();
+	executeToReady();
         readyToExecute();
+        swapcontext(&r_tail->context, &execute->context);
       }
       else{
         if(execute->status==FINISHED){
@@ -81,10 +82,13 @@ void schedule(int signum){
               }
             }
           }
+	  
+          struct threadControlBlock* temp = execute;
+          execute = NULL;
+          readyToExecute();
+          swapcontext(&temp->context, &execute->context);
           //swap context first
           //swap execute and r_tail->next
-          free(execute);
-          readyToExecute();
         }
       }
     }
@@ -96,51 +100,72 @@ void schedule(int signum){
   }
 }
 
+
+
+void addToReady(my_pthread_tcb * node) {
+  if( r_tail == NULL) {
+    r_tail = node;
+    r_tail -> next = r_tail;
+  } else {
+    node->next = r_tail -> next;
+    r_tail -> next = node;
+    r_tail = node; 
+  }
+}
+
 /* Create a new TCB for a new thread execution context and add it to the queue
  * of runnable threads. If this is the first time a thread is created, also
  * create a TCB for the main thread as well as initalize any scheduler state.
  */
 void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg){
-  //Initialize scheduler, create main thread
-  if(s==OFF){
-    //Starts scheduler
-    s=ON;
-
-    //Initializes maintcb thread control block, stores main context
-    my_pthread_tcb * maintcb = (my_pthread_tcb *) malloc(sizeof(my_pthread_tcb));
-    *thread = TID;
-    maintcb->tid = TID++;
-    maintcb->status = RUNNABLE;
-    if(!getcontext(&maintcb->context)) {
-      printf("Get Main Context Successful\n");
-    } else {
-      printf("Get Main Context Failed\n");
-    }
-
-    ucontext_t * currentcontext = (ucontext_t *) malloc(sizeof(ucontext_t));
-    getcontext(currentcontext);
-    swapcontext(currentcontext, &maintcb->context);
- 
-
-    //Confirms success
-    printf("Main Thread Created: TID = %d\n", maintcb->tid);
-  }
-  
-  //Initializes newtcb thread control block, stores function context
   my_pthread_tcb * newtcb = (my_pthread_tcb *) malloc(sizeof(my_pthread_tcb));
-  newtcb->tid = TID++;
+  newtcb->tid = ++TID;
+  *thread = TID;
   newtcb->status = RUNNABLE;
   if(!getcontext(&newtcb->context)) {
     printf("Get New Context Successful\n");
   } else {
     printf("Get New Context Failed\n");
   }
-  newtcb->context.uc_link = 0; //May change, terminates process on context return. Need to switch to next context 
+  newtcb->context.uc_link = 0; 
   newtcb->context.uc_stack.ss_sp=malloc(STACKSIZE);
   newtcb->context.uc_stack.ss_size=STACKSIZE;
   newtcb->context.uc_stack.ss_flags=0;
+  addToReady(newtcb);
   makecontext(&newtcb->context,(void *)function, 0);
-  printf("New Thread Created: TID = %d\n", newtcb->tid);
+  printf("New Thread Created: TID = %d\n", newtcb->tid);  
+
+
+  if(s==OFF){
+    s=ON;
+
+    struct itimerval it_val;
+    signal(SIGPROF, schedule);
+    
+    it_val.it_value.tv_sec = 0;
+    it_val.it_value.tv_usec = 500000;
+    it_val.it_interval = it_val.it_value;
+    if (setitimer(ITIMER_PROF, &it_val, NULL) == -1) {
+      printf("Error Calling Settimer\n");
+      exit(0);
+    } else {
+      printf("Set timer\n");
+    }
+
+    execute = (my_pthread_tcb *) malloc(sizeof(my_pthread_tcb));
+    execute->tid = 0;
+    execute->status = RUNNABLE;
+    if(!getcontext(&execute->context)) {
+      printf("Create Main Context Successful\n");
+    } else {
+      printf("Create Main Context Failed\n");
+    }
+    execute->context.uc_link = 0; 
+    execute->context.uc_stack.ss_sp=malloc(STACKSIZE);
+    execute->context.uc_stack.ss_size=STACKSIZE;
+    execute->context.uc_stack.ss_flags=0;
+    printf("Main Thread Created: TID = %d\n", execute->tid);
+  }
   
 }
 
@@ -154,9 +179,7 @@ void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg)
  */
 void my_pthread_yield(){
 
-  // Implement Here
-  //set status to pause and context swap
-  schedule(SIGALRM);
+  schedule(SIGPROF);
 }
 
 /* The calling thread will not continue until the thread with tid thread
@@ -192,7 +215,7 @@ my_pthread_t my_pthread_self(){
 
   // Implement Here //
 
-  return 10;  // temporary return, replace this
+  return execute->tid;  // temporary return, replace this
 
 }
 
@@ -202,7 +225,8 @@ my_pthread_t my_pthread_self(){
 void my_pthread_exit(){
 
   // Implement Here //
-  schedule(SIGALRM);
+  execute->status = FINISHED;
+  schedule(SIGPROF);
   //just set status to finished and call schedule(SIGALRM)
   //the scheduler will take care of it.
 }
