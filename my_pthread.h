@@ -36,7 +36,6 @@ void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg)
 
 my_pthread_t my_pthread_self();
 
-
 void my_pthread_yield();
 
 void my_pthread_exit();

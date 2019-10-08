@@ -60,23 +60,25 @@ void addToReady(my_pthread_tcb * node) {
 }
 
 
+
 void schedule(int signum){
-  printf("\n---------------------------CALLING SCHEDULE-------------------\n");
+  signal(SIGPROF, SIG_DFL);
   if(signum==SIGPROF){
-    if(execute!=NULL) {
+   if(execute!=NULL) {
       if(execute->status==RUNNABLE){
-        printf("Entering Runnable Section\n");
+	// printf("TID: %d Entering Runnable Section\n", execute->tid);
 	if(!r_tail) {
+		printf("!r_tail\n");
+		signal(SIGPROF, schedule);
 		return;
 	}
-	//swap context first
-        //swap execute and r_tail->next
 	executeToReady();
         readyToExecute();
+	signal(SIGPROF, schedule);
         swapcontext(&r_tail->context, &execute->context);
        }
-      else if(execute->status==FINISHED){
-          printf("Entering Finished Section\n");
+       else if(execute->status==FINISHED){
+          // printf("Entering Finished Section\n");
 	  //check sleep
           if(s_tail!=NULL){
 	    struct tCB* temp=s_tail->next;
@@ -86,11 +88,11 @@ void schedule(int signum){
               temp=temp->next;
             }
             if(temp->slept_on==execute){
-	      printf("Found a thread sleeping on me\n");
+	      // printf("Found a thread sleeping on me\n");
 	      temp->slept->status=RUNNABLE;
               addToReady(temp->slept);
-	      printf("Returning slept thread to Runnable Queue\n");
-	      printf("Removing my s_tail block\n");
+	      // printf("Returning slept thread to Runnable Queue\n");
+	      // printf("Removing my s_tail block\n");
 	      
 	      if(before==temp){
                 free(s_tail);
@@ -105,20 +107,24 @@ void schedule(int signum){
           struct threadControlBlock* temp = execute;
           execute = NULL;
           readyToExecute();
+	  signal(SIGPROF, schedule);
           swapcontext(&temp->context, &execute->context);
           //swap context first
           //swap execute and r_tail->next
       } else {
-	printf("Entering Sleep Section\n");
+	// printf("Entering Sleep Section\n");
 	struct threadControlBlock* temp = execute;
 	execute = NULL;
 	readyToExecute();
+	signal(SIGPROF, schedule);
 	swapcontext(&temp->context, &execute->context);
       }
     }
+    signal(SIGPROF, schedule);
   } else{
-    printf("%d\n",signum);
-    printf("Error: Akshay Fucked Up Our Code\n");
+    // printf("%d\n",signum);
+    printf("Error: Signal Other Than SIGPROF Raised\n");
+    signal(SIGPROF, schedule);
   }
 }
 
@@ -135,7 +141,7 @@ void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg)
   if(!getcontext(&newtcb->context)) {
     // printf("Get New Context Successful\n");
   } else {
-    printf("Get New Context Failed\n");
+    // printf("Get New Context Failed\n");
   }
   newtcb->context.uc_link = 0; 
   newtcb->context.uc_stack.ss_sp=malloc(STACKSIZE);
@@ -143,7 +149,7 @@ void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg)
   newtcb->context.uc_stack.ss_flags=0;
   addToReady(newtcb);
   makecontext(&newtcb->context,(void *)function, 0);
-  printf("New Thread Created: TID = %d\n", newtcb->tid);  
+  // printf("New Thread Created: TID = %d\n", newtcb->tid);  
 
 
   if(s==OFF){
@@ -156,7 +162,7 @@ void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg)
     it_val.it_value.tv_usec = 500000;
     it_val.it_interval = it_val.it_value;
     if (setitimer(ITIMER_PROF, &it_val, NULL) == -1) {
-      printf("Error Calling Settimer\n");
+      // printf("Error Calling Settimer\n");
       exit(0);
     } else {
       // printf("Set timer\n");
@@ -168,13 +174,13 @@ void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg)
     if(!getcontext(&execute->context)) {
       // printf("Create Main Context Successful\n");
     } else {
-      printf("Create Main Context Failed\n");
+      // printf("Create Main Context Failed\n");
     }
     execute->context.uc_link = 0; 
     execute->context.uc_stack.ss_sp=malloc(STACKSIZE);
     execute->context.uc_stack.ss_size=STACKSIZE;
     execute->context.uc_stack.ss_flags=0;
-    printf("Main Thread Created: TID = %d\n", execute->tid);
+    // printf("Main Thread Created: TID = %d\n", execute->tid);
   }
   
 }
@@ -198,9 +204,9 @@ void my_pthread_yield(){
  */
 
 void my_pthread_join(my_pthread_t thread){
-  printf("\n--------------- CALLING MY PTHREAD JOIN ON THREAD %d -----------------\n", thread);
+  // printf("\n--------------- CALLING MY PTHREAD JOIN ON THREAD %d -----------------\n", thread);
   if(thread==execute->tid){
-    printf("Error cannot give the same tid as the current executing thread!\n");
+    // printf("Error cannot give the same tid as the current executing thread!\n");
   }
 
   if(!r_tail) {
@@ -211,12 +217,12 @@ void my_pthread_join(my_pthread_t thread){
 	  temp=temp->next;
   }
   if(temp->tid!=thread){
-    printf("Unable to find thread control block, does not exist!\n");
+    // printf("Unable to find thread control block, does not exist!\n");
     return;
   } else {
-    printf("Found thread control block\n");
+    // printf("Found thread control block\n");
     if(temp->status == FINISHED) {
-      printf("Status is finished\n");
+      // printf("Status is finished\n");
       return;
     }
   }
@@ -232,7 +238,7 @@ void my_pthread_join(my_pthread_t thread){
 	  new_s->next=s_tail->next;
 	  s_tail->next=new_s;
   }
-  printf("Called schedule\n");
+  // printf("Called schedule\n");
   schedule(SIGPROF);
 }
 
