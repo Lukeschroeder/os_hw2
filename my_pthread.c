@@ -42,7 +42,7 @@ void readyToExecute(){
   }
 }
 void schedule(int signum){
-  if(signum==SIGALRM){
+  if(signum==SIGPROF){
     if(execute!=NULL)
       if(execute->status==RUNNABLE){
         //swap context first
@@ -75,6 +75,12 @@ void schedule(int signum){
           free(execute);
           readyToExecute();
         }
+	else{//NEW SECTION *************************************
+	  //swap context of execute to next ready
+	  //execute was moved to sleep so just move ready to execute()
+	  execute=NULL;
+	  readyToExecute();
+	}
       }
     }
 
