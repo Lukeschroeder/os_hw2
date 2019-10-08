@@ -188,24 +188,30 @@ void my_pthread_yield(){
  */
 void my_pthread_join(my_pthread_t thread){
   //replace my_pthread_tcb with whatever the head of the linked list is
-  /*
-  struct threadControlBlock* temp = &my_pthread_tcb;
-  if(temp==NULL){
-    return;
+  if(thread==execute->tid){
+	  printf("Error cannot give the same tid as the current executing thread!\n");
   }
-  if(temp->tid==thread){
-    while(temp->status!=FINISHED){}
-    my_pthread_tcb=my_pthread_tcb->next;
-    return;
+  
+  struct threadControlBlock* temp=r_tail->next;
+  while(temp!=r_tail&&temp->tid!=thread){
+	  temp=temp->next;
   }
-  while(temp->next!=NULL && temp->tid!=thread){
-    temp=temp->next;
+  if(temp->tid!=thread){
+	  printf("Unable to find thread control block, does not exist!\n");
   }
-  if(temp->next!=NULL){
-    while(temp->next->status!=FINISHED){}
-    temp->next=temp->next->next;
+  execute->status=SLEEP;
+  struct tCB* new_s=malloc(sizeof(struct tCB));
+  new_s->slept=execute;
+  new_s->slept_on=temp;
+  if(s_tail=NULL){
+	  new_s->next=new_s;
+	  s_tail=new_s;
   }
-  */
+  else{
+	  new_s->next=s_tail->next;
+	  s_tail->next=new_s;
+  }
+  schedule(SIGPROF);
 }
 
 
