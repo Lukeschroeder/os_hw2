@@ -19,6 +19,6 @@ MultiThreadYield: MultiThreadYield.c my_pthread.h my_pthread.c
 	$(CC) $(CFLAGS) MultiThreadYield.c my_pthread.c -o MultiThreadYield
 
 run:
-	./ThreadRun
+	./MultiThreadJoin
 clean:
 	rm -f ThreadRun ThreadJoin MultiThreadRun MultiThreadJoin MultiThreadYield

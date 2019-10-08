@@ -4,7 +4,8 @@
 
 void thread_run(){
   int x;
-  for(x = 2000000; x > 0 ; x--){
+  printf("Inside thread_run\n");
+  for(x = 100000; x > 0 ; x--){
     printf("Thread %d Running, Counter at %d\n", my_pthread_self(), x);
   }
   printf("Thread %d Finished\n",  my_pthread_self());

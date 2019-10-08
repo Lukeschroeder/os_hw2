@@ -9,7 +9,7 @@ struct tCB* s_tail=NULL;
 //node for thread currently running
 struct threadControlBlock* execute=NULL;
 
-
+int * p; 
 
 /* Scheduler Function
  * Pick the next runnable thread and swap contexts to start executing
@@ -48,60 +48,6 @@ void readyToExecute(){
   }
 }
 
-void schedule(int signum){
-  if(signum==SIGPROF){
-    if(execute!=NULL) {
-      if(execute->status==RUNNABLE){
-        //swap context first
-        //swap execute and r_tail->next
-	executeToReady();
-        readyToExecute();
-        swapcontext(&r_tail->context, &execute->context);
-      }
-      else{
-        if(execute->status==FINISHED){
-          //check sleep
-          if(s_tail!=NULL){
-            struct tCB* temp=s_tail->next;
-            struct tCB* before=s_tail;
-            while(temp!=s_tail && temp->slept_on!=execute){
-              before=temp;
-              temp=temp->next;
-            }
-            if(temp->slept_on==execute){
-              temp->slept->status=RUNNABLE;
-              if(before==temp){
-                if(s_tail==temp){
-
-                }
-                free(s_tail);
-
-              }
-              else{
-
-              }
-            }
-          }
-	  
-          struct threadControlBlock* temp = execute;
-          execute = NULL;
-          readyToExecute();
-          swapcontext(&temp->context, &execute->context);
-          //swap context first
-          //swap execute and r_tail->next
-        }
-      }
-    }
-
-  }
-  else{
-    printf("%d\n",signum);
-    printf("Error: Akshay Fucked Up Our Code\n");
-  }
-}
-
-
-
 void addToReady(my_pthread_tcb * node) {
   if( r_tail == NULL) {
     r_tail = node;
@@ -113,6 +59,70 @@ void addToReady(my_pthread_tcb * node) {
   }
 }
 
+
+void schedule(int signum){
+  printf("\n---------------------------CALLING SCHEDULE-------------------\n");
+  if(signum==SIGPROF){
+    if(execute!=NULL) {
+      if(execute->status==RUNNABLE){
+        printf("Entering Runnable Section\n");
+	if(!r_tail) {
+		return;
+	}
+	//swap context first
+        //swap execute and r_tail->next
+	executeToReady();
+        readyToExecute();
+        swapcontext(&r_tail->context, &execute->context);
+       }
+      else if(execute->status==FINISHED){
+          printf("Entering Finished Section\n");
+	  //check sleep
+          if(s_tail!=NULL){
+	    struct tCB* temp=s_tail->next;
+            struct tCB* before=s_tail;
+            while(temp!=s_tail && temp->slept_on!=execute){
+              before=temp;
+              temp=temp->next;
+            }
+            if(temp->slept_on==execute){
+	      printf("Found a thread sleeping on me\n");
+	      temp->slept->status=RUNNABLE;
+              addToReady(temp->slept);
+	      printf("Returning slept thread to Runnable Queue\n");
+	      printf("Removing my s_tail block\n");
+	      
+	      if(before==temp){
+                free(s_tail);
+              }
+              else{
+	      before->next=temp->next;
+              free(temp);
+              }
+            }
+	  }
+	  
+          struct threadControlBlock* temp = execute;
+          execute = NULL;
+          readyToExecute();
+          swapcontext(&temp->context, &execute->context);
+          //swap context first
+          //swap execute and r_tail->next
+      } else {
+	printf("Entering Sleep Section\n");
+	struct threadControlBlock* temp = execute;
+	execute = NULL;
+	readyToExecute();
+	swapcontext(&temp->context, &execute->context);
+      }
+    }
+  } else{
+    printf("%d\n",signum);
+    printf("Error: Akshay Fucked Up Our Code\n");
+  }
+}
+
+
 /* Create a new TCB for a new thread execution context and add it to the queue
  * of runnable threads. If this is the first time a thread is created, also
  * create a TCB for the main thread as well as initalize any scheduler state.
@@ -123,7 +133,7 @@ void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg)
   *thread = TID;
   newtcb->status = RUNNABLE;
   if(!getcontext(&newtcb->context)) {
-    printf("Get New Context Successful\n");
+    // printf("Get New Context Successful\n");
   } else {
     printf("Get New Context Failed\n");
   }
@@ -149,14 +159,14 @@ void my_pthread_create(my_pthread_t *thread, void*(*function)(void*), void *arg)
       printf("Error Calling Settimer\n");
       exit(0);
     } else {
-      printf("Set timer\n");
+      // printf("Set timer\n");
     }
 
     execute = (my_pthread_tcb *) malloc(sizeof(my_pthread_tcb));
     execute->tid = 0;
     execute->status = RUNNABLE;
     if(!getcontext(&execute->context)) {
-      printf("Create Main Context Successful\n");
+      // printf("Create Main Context Successful\n");
     } else {
       printf("Create Main Context Failed\n");
     }
@@ -186,27 +196,48 @@ void my_pthread_yield(){
  * has finished executing.
  * needs to be changed, he said it was a one line check after identifying node and calling schedular??
  */
+
 void my_pthread_join(my_pthread_t thread){
-  //replace my_pthread_tcb with whatever the head of the linked list is
-  /*
-  struct threadControlBlock* temp = &my_pthread_tcb;
-  if(temp==NULL){
+  printf("\n--------------- CALLING MY PTHREAD JOIN ON THREAD %d -----------------\n", thread);
+  if(thread==execute->tid){
+    printf("Error cannot give the same tid as the current executing thread!\n");
+  }
+
+  if(!r_tail) {
     return;
   }
-  if(temp->tid==thread){
-    while(temp->status!=FINISHED){}
-    my_pthread_tcb=my_pthread_tcb->next;
+  struct threadControlBlock* temp=r_tail->next;
+  while(temp!=r_tail&&temp->tid!=thread){
+	  temp=temp->next;
+  }
+  if(temp->tid!=thread){
+    printf("Unable to find thread control block, does not exist!\n");
     return;
+  } else {
+    printf("Found thread control block\n");
+    if(temp->status == FINISHED) {
+      printf("Status is finished\n");
+      return;
+    }
   }
-  while(temp->next!=NULL && temp->tid!=thread){
-    temp=temp->next;
+  execute->status=SLEEP;
+  struct tCB* new_s= (struct tCB*) malloc(sizeof(struct tCB));
+  new_s->slept=execute;
+  new_s->slept_on=temp;
+  if(s_tail==NULL){
+	  new_s->next=new_s;
+	  s_tail=new_s;
   }
-  if(temp->next!=NULL){
-    while(temp->next->status!=FINISHED){}
-    temp->next=temp->next->next;
+  else{
+	  new_s->next=s_tail->next;
+	  s_tail->next=new_s;
   }
-  */
+  printf("Called schedule\n");
+  schedule(SIGPROF);
 }
+
+
+
 
 
 /* Returns the thread id of the currently running thread
