@@ -62,7 +62,7 @@ void addToReady(my_pthread_tcb * node) {
 
 
 void schedule(int signum){
-  signal(SIGPROF, SIG_DFL);
+  signal(SIGPROF, SIG_IGN);
   if(signum==SIGPROF){
    if(execute!=NULL) {
       if(execute->status==RUNNABLE){
