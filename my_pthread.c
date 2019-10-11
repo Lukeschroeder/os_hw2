@@ -1,5 +1,5 @@
 #include "my_pthread.h"
-
+//Akshay Niranjan an548 && Luke Schroeder lhs52//
 /* Scheduler State */
 my_pthread_t TID=0;
 //circly linked list
