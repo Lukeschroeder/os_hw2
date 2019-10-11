@@ -6,7 +6,7 @@
 
 #define STACKSIZE 32768
 #define TIME_QUANTUM_MS 500000 // Time quantum in microseconds
-
+//Akshay Niranjan an548 && Luke Schroeder lhs52//
 /* Thread ID */
 typedef uint my_pthread_t;
 
